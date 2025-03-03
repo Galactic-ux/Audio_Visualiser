@@ -3,67 +3,81 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mobile Audio Visualizer</title>
+  <title>Audio Visualizer</title>
   <style>
     body {
       margin: 0;
       padding: 0;
       background: black;
       overflow: hidden;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
     }
     input[type="file"] {
-      color: white;
       position: absolute;
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      width: 80%;
-      max-width: 300px;
-      padding: 12px;
-      font-size: 1.1em;
-      border: 2px solid white;
-      border-radius: 25px;
       z-index: 10;
+      width: 200px;
+      height: 40px;
+      font-size: 16px;
     }
     #controls {
       position: fixed;
-      bottom: 15px;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       gap: 12px;
       align-items: center;
-      background: rgba(0, 0, 0, 0.7);
-      padding: 12px 20px;
-      border-radius: 30px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 12px 24px;
+      border-radius: 12px;
       z-index: 10;
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(5px);
+      min-width: 80vw;
+      justify-content: center;
     }
     button {
       background: rgba(255, 255, 255, 0.9);
       border: none;
-      padding: 12px 28px;
+      padding: 12px 24px;
       cursor: pointer;
-      border-radius: 20px;
-      font-size: 1.1em;
-      font-weight: bold;
-      color: #222;
-      touch-action: manipulation;
-      -webkit-touch-callout: none;
-      transition: background-color 0.1s;
+      border-radius: 8px;
+      font-size: 16px;
+      min-width: 60px;
     }
     input[type="range"] {
-      width: 180px;
-      height: 35px;
-      margin: 0 10px;
-      touch-action: manipulation;
+      width: 50vw;
+      height: 8px;
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
     }
-    #controls * {
-      user-select: none;
-      -webkit-user-select: none;
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+    }
+    canvas {
+      transition: background 0.5s ease;
+    }
+    @media (max-width: 600px) {
+      #controls {
+        bottom: 10px;
+        padding: 10px;
+        gap: 8px;
+      }
+      button {
+        padding: 10px 16px;
+        font-size: 14px;
+      }
+      input[type="file"] {
+        width: 180px;
+        font-size: 14px;
+      }
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
@@ -71,95 +85,123 @@
 </head>
 <body>
   <script>
-    let song, fft;
+    let songs = [];
+    let currentSongIndex = 0;
+    let isPlaying = false;
+    let fft;
     let particles = [];
-    let fileInput, playPauseBtn, progressSlider;
     let currentGradient = [];
     let targetGradient = [];
     let colorPalettes = [
-      [[14, 22, 39], [23, 42, 58], [34, 61, 84]],    // Deep blues
-      [[16, 20, 31], [35, 37, 46], [54, 57, 63]],     // Dark grays
-      [[40, 10, 18], [70, 15, 25], [100, 30, 40]],   // Dark reds
-      [[9, 27, 37], [12, 44, 56], [18, 68, 82]],     // Deep teals
-      [[25, 15, 40], [45, 25, 65], [70, 40, 90]],    // Dark purples
-      [[15, 30, 20], [25, 45, 30], [35, 60, 45]]     // Dark greens
+      [[14, 22, 39], [23, 42, 58], [34, 61, 84]],
+      [[16, 20, 31], [35, 37, 46], [54, 57, 63]],
+      [[40, 10, 18], [70, 15, 25], [100, 30, 40]],
+      [[9, 27, 37], [12, 44, 56], [18, 68, 82]],
+      [[25, 15, 40], [45, 25, 65], [70, 40, 90]],
+      [[15, 30, 20], [25, 45, 30], [35, 60, 45]],
+      [[10, 10, 15], [25, 25, 35], [40, 40, 55]],
+      [[30, 15, 10], [55, 25, 15], [80, 40, 25]],
+      [[20, 25, 35], [35, 40, 50], [50, 55, 65]],
+      [[12, 15, 30], [22, 25, 45], [35, 40, 65]]
     ];
     let gradientAngle = 0;
-    let touchPos = null;
 
     function setup() {
-      createCanvas(windowWidth, windowHeight);
-      pixelDensity(1);
+      createCanvas(windowWidth, windowHeight).touchMoved(e => e.preventDefault());
       angleMode(DEGREES);
-      frameRate(30);
-      textFont('Arial');
-      
-      fft = new p5.FFT(0.8, 512);
-      
-      fileInput = createFileInput(handleFile);
-      fileInput.position(width/2 - 150, 20);
-      fileInput.style('width', '300px');
-      fileInput.attribute('accept', 'audio/*');
-      
-      let controls = createDiv();
-      controls.id('controls');
-      
-      playPauseBtn = createButton('Play');
-      playPauseBtn.parent(controls);
-      playPauseBtn.mouseClicked(togglePlayPause);
-      playPauseBtn.elt.addEventListener('touchend', function(e) {
-        e.preventDefault();
-        togglePlayPause();
-      });
+      fft = new p5.FFT(0.8);
 
-      progressSlider = createSlider(0, 1, 0, 0.01);
-      progressSlider.parent(controls);
-      progressSlider.input(handleSeek);
-      progressSlider.elt.addEventListener('touchstart', function(e) {
-        e.stopPropagation();
-      });
-      progressSlider.elt.addEventListener('touchmove', function(e) {
-        e.stopPropagation();
-      });
-      
+      const fileInput = createFileInput(handleFile);
+      fileInput.attribute('multiple', true);
+      fileInput.position(windowWidth/2 - 100, 20);
+      fileInput.attribute('accept', 'audio/*');
+      fileInput.style('width', '200px');
+      fileInput.style('height', '40px');
+      fileInput.style('font-size', '16px');
+
+      const controls = createDiv();
+      controls.id('controls');
+
+      const prevBtn = createButton('Prev').parent(controls).mouseClicked(prevSong);
+      const playPauseBtn = createButton('Play').parent(controls).mouseClicked(togglePlayPause);
+      const nextBtn = createButton('Next').parent(controls).mouseClicked(nextSong);
+      const progressSlider = createSlider(0, 1, 0).parent(controls).input(handleSeek);
+
       currentGradient = colorPalettes[0];
       targetGradient = colorPalettes[1];
     }
 
     function handleFile(file) {
       if (file.type === 'audio') {
-        if (song) song.stop();
-        song = loadSound(file.data, () => {
-          progressSlider.attribute('max', song.duration());
-          playPauseBtn.html('Play').style('font-size', '1.1em');
-        }, (err) => console.error(err));
+        if (songs.length === 0) songs = [];
+        
+        const songObj = {
+          file: file,
+          audio: null,
+          name: file.name,
+          isReady: false
+        };
+        
+        songObj.audio = loadSound(file.data, () => {
+          songObj.isReady = true;
+          if (songs.length === 1) {
+            progressSlider.attribute('max', songObj.audio.duration());
+          }
+        });
+        songs.push(songObj);
       }
     }
 
     function togglePlayPause() {
-      if (!song) return;
-      // Add touch feedback
-      playPauseBtn.style('background-color', 'rgba(255,255,255,0.7)');
-      setTimeout(() => {
-        playPauseBtn.style('background-color', 'rgba(255,255,255,0.9)');
-      }, 100);
-
-      if (song.isPlaying()) {
-        song.pause();
-        playPauseBtn.html('Play');
+      if (!songs.length) return;
+      const currentSong = songs[currentSongIndex].audio;
+      
+      if (isPlaying) {
+        currentSong.pause();
+        isPlaying = false;
+        selectButton('button', 'Play');
       } else {
-        song.play();
-        playPauseBtn.html('Pause');
+        currentSong.isPaused() ? currentSong.play() : playCurrentSong();
+        isPlaying = true;
+        selectButton('button', 'Pause');
       }
     }
 
-    function handleSeek() {
-      if (song) {
-        let seekTime = progressSlider.value();
-        if (abs(song.currentTime() - seekTime) > 1) {
-          song.jump(seekTime);
+    function playCurrentSong() {
+      songs.forEach(song => song.audio?.stop());
+      const currentSong = songs[currentSongIndex].audio;
+      currentSong.play();
+      isPlaying = true;
+      selectButton('button', 'Pause');
+      
+      currentSong.onended(() => {
+        if (currentSongIndex < songs.length - 1) {
+          currentSongIndex++;
+          playCurrentSong();
+        } else {
+          isPlaying = false;
+          selectButton('button', 'Play');
         }
-      }
+      });
+      progressSlider.attribute('max', currentSong.duration());
+    }
+
+    function prevSong() {
+      if (!songs.length || currentSongIndex <= 0) return;
+      songs[currentSongIndex].audio?.stop();
+      currentSongIndex--;
+      if (isPlaying) playCurrentSong();
+    }
+
+    function nextSong() {
+      if (!songs.length || currentSongIndex >= songs.length - 1) return;
+      songs[currentSongIndex].audio?.stop();
+      currentSongIndex++;
+      if (isPlaying) playCurrentSong();
+    }
+
+    function handleSeek() {
+      songs[currentSongIndex]?.audio.jump(progressSlider.value());
     }
 
     function drawGradientBackground(amp) {
@@ -169,18 +211,16 @@
         color[2] = lerp(color[2], targetGradient[i][2], 0.02);
       });
 
-      gradientAngle += map(amp, 0, 255, 0.2, 1.5);
-      let angle = radians(gradientAngle);
-      let x1 = width/2 + cos(angle) * width;
-      let y1 = height/2 + sin(angle) * height;
-      let x2 = width/2 - cos(angle) * width;
-      let y2 = height/2 - sin(angle) * height;
-
-      let gradient = drawingContext.createLinearGradient(x1, y1, x2, y2);
+      gradientAngle += map(amp, 0, 255, 0.2, 2);
+      const angle = radians(gradientAngle);
+      const x1 = width/2 + cos(angle) * width;
+      const y1 = height/2 + sin(angle) * height;
+      const gradient = drawingContext.createLinearGradient(x1, y1, width/2, height/2);
+      
       gradient.addColorStop(0, `rgb(${currentGradient[0]})`);
       gradient.addColorStop(0.5, `rgb(${currentGradient[1]})`);
       gradient.addColorStop(1, `rgb(${currentGradient[2]})`);
-
+      
       drawingContext.fillStyle = gradient;
       drawingContext.fillRect(0, 0, width, height);
     }
@@ -188,11 +228,12 @@
     function draw() {
       push();
       resetMatrix();
-      if (song && song.isPlaying()) {
-        let amp = fft.getEnergy(20, 200);
+      if (songs[currentSongIndex]?.audio?.isPlaying()) {
+        const amp = fft.getEnergy(20, 200);
         drawGradientBackground(amp);
-        if (amp > 220) targetGradient = random(colorPalettes);
+        if (amp > 220) targetGradient = colorPalettes[(colorPalettes.indexOf(targetGradient) + 1) % colorPalettes.length];
       } else {
+        clear();
         background(0);
       }
       pop();
@@ -202,58 +243,50 @@
       strokeWeight(4);
       noFill();
 
-      if (song && song.isPlaying()) {
+      if (songs[currentSongIndex]?.audio?.isPlaying()) {
         fft.analyze();
-        let wave = fft.waveform();
-        let amp = fft.getEnergy(20, 200);
+        const wave = fft.waveform();
+        const amp = fft.getEnergy(20, 200);
 
         for (let t = -1; t <= 1; t += 2) {
           beginShape();
-          for (let i = -3; i <= 183; i += 3) {
-            let clampedI = constrain(i, 0, 180);
-            let index = floor(map(clampedI, 0, 180, 0, wave.length - 1));
-            let avg = (
-              wave[index] +
-              wave[min(index + 1, wave.length - 1)] * 0.8 +
-              wave[min(index + 2, wave.length - 1)] * 0.6
-            ) / 2.4;
-            
-            let r = map(avg, -1, 1, 200, 350);
-            let x = r * sin(clampedI) * t;
-            let y = r * cos(clampedI);
+          for (let i = 0; i <= 180; i += 6) {
+            const index = floor(map(i, 0, 180, 0, wave.length - 1));
+            const r = map(wave[index], -1, 1, 200, 350);
+            const x = r * sin(i) * t;
+            const y = r * cos(i);
             curveVertex(x, y);
           }
           endShape();
         }
 
-        if (frameCount % 2 === 0) particles.push(new Particle());
+        if (frameCount % 2 === 0 && particles.length < 100) {
+          particles.push(new Particle());
+        }
+        
         for (let i = particles.length - 1; i >= 0; i--) {
           particles[i].update(amp > 230);
           particles[i].show();
           if (particles[i].edges()) particles.splice(i, 1);
         }
-      } else {
+      }
+
+      if (songs[currentSongIndex]) {
+        push();
         fill(255);
         noStroke();
         textAlign(CENTER, CENTER);
-        textSize(18);
-        text('Upload audio file using the button above', 0, 0);
+        text(`Now Playing: ${songs[currentSongIndex].name}`, 0, -height/2 + 50);
+        pop();
+        select('input[type="range"]').value(songs[currentSongIndex].audio.currentTime());
       }
-
-      if (touchPos) {
-        fill(255, 50);
-        noStroke();
-        ellipse(touchPos.x, touchPos.y, 50, 50);
-      }
-
-      if (song) progressSlider.value(song.currentTime());
     }
 
     class Particle {
       constructor() {
-        this.pos = p5.Vector.random2D().mult(200);
+        this.pos = p5.Vector.random2D().mult(250);
         this.vel = createVector(0, 0);
-        this.acc = this.pos.copy().mult(random(0.00005, 0.0001));
+        this.acc = this.pos.copy().mult(random(0.0001, 0.00001));
         this.w = random(2, 4);
         this.color = [random(200,255), random(200,255), random(200,255)];
       }
@@ -261,7 +294,7 @@
       update(cond) {
         this.vel.add(this.acc);
         this.pos.add(this.vel);
-        if (cond) this.vel.add(this.acc.mult(2));
+        if (cond) this.vel.mult(1.03);
       }
       
       edges() {
@@ -276,28 +309,12 @@
       }
     }
 
-    function touchStarted() {
-      getAudioContext().resume();
-      touchPos = createVector(mouseX, mouseY);
-      return false;
-    }
-
-    function touchEnded() {
-      touchPos = null;
-      return false;
-    }
-
-    function windowResized() {
-      resizeCanvas(windowWidth, windowHeight);
-      fileInput.position(width/2 - 150, 20);
-    }
-
     function lerp(start, end, amt) {
       return (1 - amt) * start + amt * end;
     }
 
-    function random(arr) {
-      return arr[Math.floor(Math.random() * arr.length)];
+    function selectButton(selector, label) {
+      selectAll(selector).forEach(btn => btn.html(label));
     }
   </script>
 </body>
