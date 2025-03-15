@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Audio Visualizer</title>
   <style>
     body {
@@ -10,276 +10,839 @@
       padding: 0;
       background: black;
       overflow: hidden;
-      touch-action: none;
+      font-family: 'Arial', sans-serif;
     }
-    input[type="file"] {
-      position: absolute;
+
+    #upload-container {
+      position: fixed;
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 10;
-      width: 200px;
-      height: 40px;
-      font-size: 16px;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 30px;
+      padding: 8px 20px;
+      transition: background 0.3s;
     }
+
+    #upload-container:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    .custom-upload-btn {
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      padding: 8px 20px;
+    }
+
     #controls {
+      height: 25px;
+      width: 300px;
       position: fixed;
-      bottom: 20px;
+      bottom: 10px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
-      gap: 12px;
+      gap: 15px;
       align-items: center;
       background: rgba(255, 255, 255, 0.1);
-      padding: 12px 24px;
-      border-radius: 12px;
-      z-index: 10;
-      backdrop-filter: blur(5px);
-      min-width: 80vw;
-      justify-content: center;
+      padding: 15px 30px;
+      border-radius: 30px;
+      z-index: 100;
+      backdrop-filter: blur(10px);
     }
-    button {
-      background: rgba(255, 255, 255, 0.9);
+
+    .control-btn {
+      height: 30px;
+      width: 35px;
+      background: none;
       border: none;
-      padding: 12px 24px;
+      color: white;
+      font-size: 24px;
       cursor: pointer;
-      border-radius: 8px;
-      font-size: 16px;
-      min-width: 60px;
+      padding-bottom: 35px;
+      border-radius: 30%;
+      transition: all 0.3s;
     }
+
+    .control-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    #time-display {
+      color: white;
+      font-size: 14px;
+      min-width: 100px;
+      text-align: center;
+    }
+
     input[type="range"] {
-      width: 50vw;
-      height: 8px;
-      -webkit-appearance: none;
+      width: 200px;
+      height: 4px;
       background: rgba(255, 255, 255, 0.2);
-      border-radius: 4px;
+      border-radius: 2px;
     }
+
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 20px;
-      height: 20px;
+      width: 12px;
+      height: 12px;
       background: white;
       border-radius: 50%;
+      cursor: pointer;
     }
-    canvas {
-      transition: background 0.5s ease;
+
+    #playlist-container {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      transition: background 0.3s;
+      max-width: 300px;
+      min-width: 200px;
     }
-    @media (max-width: 600px) {
+
+    #current-song {
+      display: flex;
+      align-items: center;
+      padding: 10px 15px;
+      color: white;
+      cursor: pointer;
+      position: relative;
+    }
+
+    #song-display {
+      flex-grow: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      position: relative;
+      padding-right: 10px;
+    }
+
+    .marquee {
+      display: inline-block;
+      animation: marquee 10s linear infinite;
+    }
+
+    @keyframes marquee {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    #dropdown-button {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 5px;
+    }
+
+    #song-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.8);
+      border-radius: 0 0 15px 15px;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+      backdrop-filter: blur(10px);
+    }
+
+    .song-option {
+      padding: 10px 15px;
+      color: white;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .song-option:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    #playlist-container:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .album-art {
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 15px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1;
+      transition: transform 0.2s ease-out;
+    }
+
+    #visualizer-controls {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 30px;
+    padding: 12px 20px;
+    transition: background 0.3s;
+    display: flex;
+    gap: 15px;
+  }
+
+  #visualizer-controls:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .visualizer-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    cursor: pointer;
+  }
+
+  .visualizer-option input[type="radio"] {
+    accent-color: #fff;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .visualizer-option label {
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  /* Add mobile-specific styles */
+    @media (pointer: coarse) {
+      #upload-container {
+        padding: 12px 25px;
+        top: 10px;
+      }
+
       #controls {
-        bottom: 10px;
-        padding: 10px;
-        gap: 8px;
+        width: 90%;
+        bottom: 20px;
+        padding: 20px;
+        height: auto;
       }
-      button {
-        padding: 10px 16px;
-        font-size: 14px;
+
+      .control-btn {
+        height: 40px;
+        width: 50px;
+        font-size: 28px;
       }
-      input[type="file"] {
-        width: 180px;
-        font-size: 14px;
+
+      #playlist-container {
+        max-width: 80%;
+        left: 10px;
+        top: 10px;
+      }
+
+      input[type="range"] {
+        width: 150px;
+        height: 8px;
+      }
+
+      .album-art {
+        width: 250px;
+        height: 250px;
+      }
+
+      #visualizer-controls {
+        padding: 15px 25px;
+        right: 10px;
+        top: 10px;
       }
     }
   </style>
+  <script>
+    // Detect mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Mobile performance adjustments
+    let MOBILE_ADJUSTMENTS = {
+      fftBins: isMobile ? 256 : 512,
+      particlesMax: isMobile ? 50 : 100,
+      linNum: isMobile ? 40 : 80
+    };
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/addons/p5.sound.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
 </head>
 <body>
+  <div id="upload-container">
+    <input type="file" id="file-input" accept="audio/*" multiple>
+    <label for="file-input" class="custom-upload-btn">
+      <span>Upload Music Here</span>
+    </label>
+  </div>
+
+  <img class="album-art" id="album-art" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=">
+
+  <div id="playlist-container">
+    <div id="current-song" onclick="toggleDropdown()">
+      <div id="song-display">
+        <span id="song-title-display"></span>
+      </div>
+      <button id="dropdown-button">▼</button>
+    </div>
+    <div id="song-dropdown"></div>
+  </div>
+
+  <div id="visualizer-controls">
+    <div class="visualizer-option">
+      <input type="radio" id="wave-mode" name="visualizer" checked>
+      <label for="wave-mode">Wave</label>
+    </div>
+    <div class="visualizer-option">
+      <input type="radio" id="bubbles-mode" name="visualizer">
+      <label for="bubbles-mode">Bubbles</label>
+    </div>
+  </div>
+
+
   <script>
-    let songs = [];
-    let currentSongIndex = 0;
-    let isPlaying = false;
-    let fft;
+    let song, fft;
     let particles = [];
+    let albumArt;
     let currentGradient = [];
     let targetGradient = [];
-    let colorPalettes = [
-      [[14, 22, 39], [23, 42, 58], [34, 61, 84]],
-      [[16, 20, 31], [35, 37, 46], [54, 57, 63]],
-      [[40, 10, 18], [70, 15, 25], [100, 30, 40]],
-      [[9, 27, 37], [12, 44, 56], [18, 68, 82]],
-      [[25, 15, 40], [45, 25, 65], [70, 40, 90]],
-      [[15, 30, 20], [25, 45, 30], [35, 60, 45]],
-      [[10, 10, 15], [25, 25, 35], [40, 40, 55]],
-      [[30, 15, 10], [55, 25, 15], [80, 40, 25]],
-      [[20, 25, 35], [35, 40, 50], [50, 55, 65]],
-      [[12, 15, 30], [22, 25, 45], [35, 40, 65]]
-    ];
     let gradientAngle = 0;
+    let artSize = 50;
+    let peakEnergy = 0;
+
+    //Playlist
+    let playlist = [];
+    let currentTrackIndex = -1;
+    let dropdownOpen = false;
+
+
+
+    //Circles Visualizer
+    var fftLin;
+    var spectrumScale = 1;
+    var linNum = 80;
+    var r = 0;
+    var x = [];
+    var y = [];
+    var rotationSpeeds = [];
+
+    //Line Visualizer
+    //const MAX_LINES = 40;
+    //let orbitingLines = [];
+
+    let currentScale = 1;
+    let targetScale = 1;
+    const BASE_SCALE = 1;
+    const PULSE_INTENSITY = 0.3; // Adjust this value to control maximum size increase
+
+    const colorPalettes = [
+      // Enhanced Midnight series
+      [[20, 30, 50], [35, 50, 75], [50, 70, 100]],    // Vivid blue
+      // Crimson Night
+      [[50, 15, 25], [80, 25, 35], [110, 40, 50]],    // Rich reds
+      // Abyssal Glow
+      [[15, 35, 45], [25, 55, 70], [40, 75, 90]],    // Luminous teal
+      // Twilight Pulse
+      [[35, 20, 50], [60, 35, 80], [85, 50, 110]],   // Electric purple
+      // Forest Aurora
+      [[25, 40, 30], [45, 60, 45], [65, 80, 60]],    // Glowing green
+      // Volcanic Flame
+      [[40, 20, 15], [70, 35, 25], [100, 50, 35]],   // Intense oranges
+      // Mystic Haze
+      [[30, 35, 45], [50, 55, 65], [70, 75, 85]],    // Frosted blues
+      // Nebula Core
+      [[20, 25, 40], [35, 40, 65], [50, 55, 90]],    // Cosmic purple
+      // Cyber Neon
+      [[30, 40, 50], [50, 70, 90], [70, 100, 130]],  // Cyan accents
+      // Amber Wave
+      [[40, 30, 20], [65, 50, 35], [90, 70, 50]],    // Golden tones
+      // Bio Luminescence
+      [[15, 40, 35], [25, 60, 50], [35, 80, 65]],    // Alien green
+      // Deep Magma
+      [[45, 15, 25], [70, 25, 35], [95, 35, 45]],   // Blood orange
+      // Arctic Dawn
+      [[25, 35, 50], [40, 50, 70], [55, 65, 90]],    // Ice blue
+      // Poison Mist
+      [[30, 40, 20], [50, 60, 35], [70, 80, 50]],   // Toxic green
+      // Royal Veil
+      [[40, 20, 50], [60, 35, 75], [80, 50, 100]],   // Regal purple
+      // Sunset Horizon
+      [[50, 30, 40], [75, 50, 60], [100, 70, 80]],    // Pinkish hues
+      [[10, 20, 60], [25, 35, 90], [40, 50, 130]],    // Neon azure
+      // Scarlet Inferno
+      [[60, 10, 20], [95, 20, 30], [130, 30, 40]],    // Fire reds
+      // Abyssal Surge
+      [[10, 40, 50], [20, 60, 80], [30, 85, 110]],    // Intense teal
+      // Neon Pulse
+      [[45, 15, 60], [70, 25, 90], [100, 35, 130]],   // Electric violet
+      // Jungle Shock
+      [[20, 50, 25], [35, 75, 40], [50, 100, 55]],    // Acid green
+      // Lava Core
+      [[50, 25, 10], [85, 40, 20], [120, 55, 30]],    // Flaming orange
+      // Crystal Haze
+      [[20, 40, 50], [35, 60, 80], [50, 85, 110]],    // Arctic cyan
+      // Galactic Core
+      [[25, 20, 50], [40, 30, 80], [55, 40, 110]],    // Deep cosmos
+      // Cyber Glow
+      [[20, 50, 60], [40, 80, 110], [60, 110, 150]],  // Neon cyan
+      // Solar Flare
+      [[50, 35, 15], [80, 55, 25], [110, 75, 35]],    // Liquid gold
+      // Toxic Bloom
+      [[10, 50, 30], [20, 75, 45], [30, 100, 60]],    // Radioactive green
+      // Magma Burst
+      [[55, 10, 20], [85, 20, 30], [115, 30, 40]],    // Molten core
+      // Polar Glow
+      [[20, 30, 60], [35, 45, 85], [50, 60, 110]],    // Glacier blue
+      // Venom Rush
+      [[40, 50, 15], [60, 75, 25], [80, 100, 35]],    // Poison dart
+      // Majestic Veil
+      [[50, 15, 60], [75, 25, 90], [100, 35, 120]],   // Royal amethyst
+      // Neon Sunset
+      [[60, 25, 45], [90, 40, 65], [120, 55, 85]]     // Hot pink
+    ];
+
+    let visualizerMode = 'waveform'; // Default visualizer mode
 
     function setup() {
-      createCanvas(windowWidth, windowHeight).touchMoved(e => e.preventDefault());
+      createCanvas(windowWidth, windowHeight);
       angleMode(DEGREES);
-      fft = new p5.FFT(0.8);
+      //fft = new p5.FFT(0.8, 512);
+       fft = new p5.FFT(0.8, MOBILE_ADJUSTMENTS.fftBins);
+      currentGradient = colorPalettes[0];
+      targetGradient = colorPalettes[1];
 
-      const fileInput = createFileInput(handleFile);
-      fileInput.attribute('multiple', true);
-      fileInput.position(windowWidth/2 - 100, 20);
-      fileInput.attribute('accept', 'audio/*');
-      fileInput.style('width', '200px');
-      fileInput.style('height', '40px');
-      fileInput.style('font-size', '16px');
+      // Mobile touch event listeners
+      if(isMobile) {
+        document.querySelector('.control-btn').addEventListener('touchend', togglePlay);
+        document.getElementById('file-input').addEventListener('touchstart', function(e) {
+          e.stopPropagation();
+        });
+      }
+      
+      document.addEventListener('click', (e) => {
+      if (!e.target.closest('#playlist-container')) {
+        dropdownOpen = false;
+        document.getElementById('song-dropdown').style.display = 'none';
+      }
+    });
 
+    // Update file input event listener
+    document.getElementById('file-input').addEventListener('change', function(e) {
+      handleFile(e.target.files);
+    });
+
+    // Add touch event listener for progress bar
+    const progressBar = document.querySelector('input[type="range"]');
+    if (progressBar) {
+        progressBar.addEventListener('touchstart', function(e) {
+            e.stopPropagation();
+        });
+    }
+
+    // Prevent touch scrolling
+    document.body.addEventListener('touchmove', function(e) {
+      if(e.target.tagName !== 'INPUT') {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    // Add playlist selection handler
+    /*document.getElementById('song-select').addEventListener('change', function(e) {
+      currentTrackIndex = parseInt(e.target.value);
+      loadTrack(playlist[currentTrackIndex]);
+    });*/
+
+
+      document.getElementById('wave-mode').addEventListener('change', () => {
+        visualizerMode = 'waveform';
+      });
+  
+      document.getElementById('bubbles-mode').addEventListener('change', () => {
+        visualizerMode = 'circles';
+      });
+
+      //Circle Visualizer Logic
+      fftLin = fft.linAverages(linNum);
+      for (var i = 0; i< fftLin.length; i++){
+        if(i == 0) {
+          x[i] = 0;
+          y[i] = 0;
+        } else {
+          x[i] = random(-width, width);
+          y[i] = random(-height, height);
+        }
+        rotationSpeeds[i] = random(0.5,1);
+      }
+
+      createControls();
+      
+    }
+
+    function createControls() {
       const controls = createDiv();
       controls.id('controls');
 
-      const prevBtn = createButton('Prev').parent(controls).mouseClicked(prevSong);
-      const playPauseBtn = createButton('Play').parent(controls).mouseClicked(togglePlayPause);
-      const nextBtn = createButton('Next').parent(controls).mouseClicked(nextSong);
-      const progressSlider = createSlider(0, 1, 0).parent(controls).input(handleSeek);
+      const playBtn = createButton('▶');
+      playBtn.class('control-btn');
+      playBtn.mouseClicked(togglePlay);
+      playBtn.parent(controls);
 
-      currentGradient = colorPalettes[0];
-      targetGradient = colorPalettes[1];
+      const progress = createSlider(0, 1, 0, 0.01);
+      progress.input(() => song.jump(progress.value()));
+      progress.parent(controls);
+
+      const timeDisplay = createDiv('0:00 / 0:00');
+      timeDisplay.id('time-display');
+      timeDisplay.parent(controls);
     }
 
-    function handleFile(file) {
-      if (file.type === 'audio') {
-        if (songs.length === 0) songs = [];
-        
-        const songObj = {
-          file: file,
-          audio: null,
-          name: file.name,
-          isReady: false
-        };
-        
-        songObj.audio = loadSound(file.data, () => {
-          songObj.isReady = true;
-          if (songs.length === 1) {
-            progressSlider.attribute('max', songObj.audio.duration());
+    async function handleFile(files) {
+
+       // Mobile audio context resume
+      if(isMobile && typeof Tone !== 'undefined' && Tone.context.state !== 'running') {
+        await Tone.context.resume();
+      }
+
+      // Start audio on user interaction for mobile
+      if(isMobile && playlist.length > 0) {
+        const playButton = document.querySelector('.control-btn');
+        playButton.addEventListener('touchend', function firstPlay() {
+          if(song && !song.isPlaying()) {
+            song.play();
+            playButton.textContent = '⏸';
           }
+          playButton.removeEventListener('touchend', firstPlay);
+        }, {once: true});
+      }
+
+      const readerPromises = Array.from(files).map(file => 
+        new Promise(resolve => {
+          new jsmediatags.Reader(file).read({
+            onSuccess: tag => {
+              const track = {
+                file,
+                title: tag.tags.title || file.name.replace(/\.[^/.]+$/, ""),
+                artist: tag.tags.artist || 'Unknown Artist',
+                picture: tag.tags.picture
+              };
+              resolve(track);
+            },
+            onError: () => resolve({
+              file,
+              title: file.name.replace(/\.[^/.]+$/, ""),
+              artist: 'Unknown Artist',
+              picture: null
+            })
+          });
+        })
+      );
+
+    const newTracks = await Promise.all(readerPromises);
+      playlist = [...playlist, ...newTracks];
+      updatePlaylistDropdown();
+      
+      if (currentTrackIndex === -1) {
+        currentTrackIndex = 0;
+        loadTrack(playlist[0]);
+      }
+    }
+
+    // Add window resize handler
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
+
+    //Playlist  
+    function updatePlaylistDropdown() {
+      const dropdown = document.getElementById('song-dropdown');
+      dropdown.innerHTML = playlist
+        .map((track, index) => `
+          <div class="song-option" data-index="${index}" onclick="selectTrack(${index})">
+            ${track.title} - ${track.artist}
+          </div>
+        `)
+        .join('');
+    }
+
+    function loadTrack(track) {
+      if (song) song.stop();
+      
+      // Update song display
+      const display = document.getElementById('song-title-display');
+      const container = document.getElementById('song-display');
+      const fullText = `${track.title} - ${track.artist}`;
+      
+      display.textContent = fullText;
+      display.classList.remove('marquee');
+      
+      // Check if text overflows
+      if (display.scrollWidth > container.offsetWidth) {
+        display.classList.add('marquee');
+      }
+
+      song = loadSound(URL.createObjectURL(track.file), () => {
+        if (!song.isPlaying()) song.play();
+        document.querySelector('input[type="range"]').max = song.duration();
+      });
+
+
+      song.onended(() => {
+            if (Math.abs(song.currentTime() - song.duration()) < 0.1) {
+                playNextTrack();
+            }
         });
-        songs.push(songObj);
-      }
-    }
-
-    function togglePlayPause() {
-      if (!songs.length) return;
-      const currentSong = songs[currentSongIndex].audio;
       
-      if (isPlaying) {
-        currentSong.pause();
-        isPlaying = false;
-        selectButton('button', 'Play');
+
+      const albumArt = document.getElementById('album-art');
+      if (track.picture) {
+        const base64 = arrayBufferToBase64(track.picture.data);
+        albumArt.style.display = 'block';
+        albumArt.src = `data:${track.picture.format};base64,${base64}`;
       } else {
-        currentSong.isPaused() ? currentSong.play() : playCurrentSong();
-        isPlaying = true;
-        selectButton('button', 'Pause');
+        albumArt.style.display = 'none';
       }
     }
 
-    function playCurrentSong() {
-      songs.forEach(song => song.audio?.stop());
-      const currentSong = songs[currentSongIndex].audio;
-      currentSong.play();
-      isPlaying = true;
-      selectButton('button', 'Pause');
+    function playNextTrack() {
+    currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+    loadTrack(playlist[currentTrackIndex]);
+
+    }
+
+    function toggleDropdown() {
+      dropdownOpen = !dropdownOpen;
+      document.getElementById('song-dropdown').style.display = 
+        dropdownOpen ? 'block' : 'none';
+    }
+
+    function selectTrack(index) {
+      currentTrackIndex = index;
+      loadTrack(playlist[index]);
+      song.play();
+      toggleDropdown();
+    }
+
+
+    function draw() {
+      background(0, 50);
+      translate(width/2, height/2);
       
-      currentSong.onended(() => {
-        if (currentSongIndex < songs.length - 1) {
-          currentSongIndex++;
-          playCurrentSong();
-        } else {
-          isPlaying = false;
-          selectButton('button', 'Play');
+      if (song && song.isPlaying()) {
+        updateVisuals();
+        drawBackground();
+        //drawLines();
+        if (visualizerMode === 'waveform') {
+          drawWaveform();
+          updateParticles();
+        } else if (visualizerMode === 'circles') {
+          drawCircles();
         }
-      });
-      progressSlider.attribute('max', currentSong.duration());
+        
+        updateProgress();
+      } else {
+        background(0);
+      }
     }
+  
 
-    function prevSong() {
-      if (!songs.length || currentSongIndex <= 0) return;
-      songs[currentSongIndex].audio?.stop();
-      currentSongIndex--;
-      if (isPlaying) playCurrentSong();
-    }
+    function drawBackground() {
+      const energy = fft.getEnergy(20, 200);
+      peakEnergy = max(energy, peakEnergy * 0.98);
 
-    function nextSong() {
-      if (!songs.length || currentSongIndex >= songs.length - 1) return;
-      songs[currentSongIndex].audio?.stop();
-      currentSongIndex++;
-      if (isPlaying) playCurrentSong();
-    }
+      // Update gradient colors
+      currentGradient = currentGradient.map((col, i) => 
+        col.map((c, j) => lerp(c, targetGradient[i][j], 0.005)
+      ));
 
-    function handleSeek() {
-      songs[currentSongIndex]?.audio.jump(progressSlider.value());
-    }
-
-    function drawGradientBackground(amp) {
-      currentGradient.forEach((color, i) => {
-        color[0] = lerp(color[0], targetGradient[i][0], 0.02);
-        color[1] = lerp(color[1], targetGradient[i][1], 0.02);
-        color[2] = lerp(color[2], targetGradient[i][2], 0.02);
-      });
-
-      gradientAngle += map(amp, 0, 255, 0.2, 2);
-      const angle = radians(gradientAngle);
-      const x1 = width/2 + cos(angle) * width;
-      const y1 = height/2 + sin(angle) * height;
-      const gradient = drawingContext.createLinearGradient(x1, y1, width/2, height/2);
+      // Create full-screen rotating gradient
+      gradientAngle += map(peakEnergy, 0, 255, 0.2, 2);
+      let angle = radians(gradientAngle);
       
+      push();
+      translate(-width/2, -height/2);
+      
+      // Calculate gradient points to cover entire screen
+      let x1 = cos(angle) * width;
+      let y1 = sin(angle) * height;
+      let x2 = width - cos(angle) * width;
+      let y2 = height - sin(angle) * height;
+
+      let gradient = drawingContext.createLinearGradient(x1, y1, x2, y2);
       gradient.addColorStop(0, `rgb(${currentGradient[0]})`);
       gradient.addColorStop(0.5, `rgb(${currentGradient[1]})`);
       gradient.addColorStop(1, `rgb(${currentGradient[2]})`);
-      
+
       drawingContext.fillStyle = gradient;
       drawingContext.fillRect(0, 0, width, height);
+      pop();
     }
 
-    function draw() {
-      push();
-      resetMatrix();
-      if (songs[currentSongIndex]?.audio?.isPlaying()) {
-        const amp = fft.getEnergy(20, 200);
-        drawGradientBackground(amp);
-        if (amp > 220) targetGradient = colorPalettes[(colorPalettes.indexOf(targetGradient) + 1) % colorPalettes.length];
-      } else {
-        clear();
-        background(0);
+    function updateVisuals() {
+      fft.analyze();
+      const energy = fft.getEnergy(20, 200);
+      peakEnergy = max(energy, peakEnergy * 0.98);
+
+      // Calculate target scale based on audio energy
+      targetScale = BASE_SCALE + (peakEnergy / 255) * PULSE_INTENSITY;
+      
+      // Smooth scale transition
+      currentScale = lerp(currentScale, targetScale, 1);
+      
+      // Apply scaling to album art
+      const albumArt = document.getElementById('album-art');
+      albumArt.style.transform = `translate(-50%, -50%) scale(${currentScale})`;
+
+      // Smooth palette transition
+      if (energy > 250) {
+        targetGradient = random(colorPalettes.filter(p => p !== targetGradient));
       }
-      pop();
+      currentGradient = currentGradient.map((col, i) => col.map((c, j) => 
+        lerp(c, targetGradient[i][j], 0.005)));
+    }
 
-      translate(width/2, height/2);
-      stroke("rgba(255, 50, 50, 0.8)");
-      strokeWeight(4);
+    function drawWaveform() {
+      const waveform = fft.waveform();
+      
       noFill();
-
-      if (songs[currentSongIndex]?.audio?.isPlaying()) {
-        fft.analyze();
-        const wave = fft.waveform();
-        const amp = fft.getEnergy(20, 200);
-
-        for (let t = -1; t <= 1; t += 2) {
+      stroke("red");
+      strokeWeight(5);
+      
+      for (let t = -1; t <= 1; t += 2) {
           beginShape();
-          for (let i = 0; i <= 180; i += 6) {
-            const index = floor(map(i, 0, 180, 0, wave.length - 1));
-            const r = map(wave[index], -1, 1, 200, 350);
-            const x = r * sin(i) * t;
-            const y = r * cos(i);
+          for (let i = -3; i <= 183; i += 3) {
+            let clampedI = constrain(i, 0, 180);
+            let index = floor(map(clampedI, 0, 180, 0, waveform.length - 1));
+            let avg = (
+              waveform[index] +
+              waveform[min(index + 1, waveform.length - 1)] +
+              waveform[min(index + 1, waveform.length - 1)] +
+              waveform[min(index + 2, waveform.length - 1)] +
+              waveform[max(index - 1, 0)] +
+              waveform[max(index - 1, 0)] +
+              waveform[max(index - 2, 0)]
+            ) / 7;
+            
+            let r = map(avg, -1, 1, 200, 350);
+            let x = r * sin(clampedI) * t;
+            let y = r * cos(clampedI);
             curveVertex(x, y);
           }
           endShape();
         }
+    }
 
-        if (frameCount % 2 === 0 && particles.length < 100) {
-          particles.push(new Particle());
-        }
-        
-        for (let i = particles.length - 1; i >= 0; i--) {
-          particles[i].update(amp > 230);
-          particles[i].show();
-          if (particles[i].edges()) particles.splice(i, 1);
-        }
-      }
-
-      if (songs[currentSongIndex]) {
+    function drawCircles() {
+      fft.analyze();
+      fftLin = fft.linAverages(linNum);
+      noStroke();
+      //fill(342, 23, 215);
+      for(var i = 0; i < fftLin.length; i++){
         push();
-        fill(255);
-        noStroke();
-        textAlign(CENTER, CENTER);
-        text(`Now Playing: ${songs[currentSongIndex].name}`, 0, -height/2 + 50);
+        rotate(r*rotationSpeeds[i]);
+        strokeWeight(3);
+        if(i % 2 == 1) {
+          stroke(255);
+        } else {
+          stroke(255);
+        }
+        if(i == 0) {
+          fill(0);
+          ellipse(x[i], y[i], fftLin[i]*spectrumScale*3, fftLin[i]*spectrumScale*3);
+        } else {
+          noFill();
+          ellipse(x[i], y[i], fftLin[i]*spectrumScale, fftLin[i]*spectrumScale);
+        }
         pop();
-        select('input[type="range"]').value(songs[currentSongIndex].audio.currentTime());
       }
+      r += 0.3;
+    }
+
+    /*function drawLines() {
+      fft.analyze();
+      const energy = fft.getEnergy(20, 200);
+      
+      // Add new lines periodically
+      if (orbitingLines.length < MAX_LINES) {
+        orbitingLines.push(new OrbitingLine());
+      }
+      // Update and display all lines
+      orbitingLines.forEach((line, index) => {
+        line.update(energy);
+        line.display();
+        
+        // Remove lines that have faded out
+        if (line.history.length <= 1) {
+          orbitingLines.splice(index, 1);
+        }
+      });
+      
+      // Gradually fade out oldest lines
+      if (orbitingLines.length > MAX_LINES) {
+        orbitingLines.shift();
+      }
+    }*/
+
+    function updateParticles() {
+      particles.push(new Particle());
+
+      let angle = frameCount * 0.5;
+      rotate(angle);
+      
+      particles.forEach((p, i) => {
+        p.update(peakEnergy);
+        p.display();
+        if (p.isOffscreen()) particles.splice(i, 1);
+      });
+    }
+
+    function getCurrentColor(index) {
+      return currentGradient[index % currentGradient.length];
+    }
+
+    function updateProgress() {
+      const progress = document.querySelector('input[type="range"]');
+      progress.value = song.currentTime();
+      document.getElementById('time-display').textContent = 
+        `${formatTime(song.currentTime())} / ${formatTime(song.duration())}`;
+    }
+
+    function togglePlay() {
+      if (!song || !playlist.length) return;
+      song.isPlaying() ? song.pause() : song.play();
+      document.querySelector('.control-btn').textContent = 
+        song.isPlaying() ? '⏸' : '▶';
+    }
+
+    function formatTime(sec) {
+      return `${floor(sec/60)}:${floor(sec%60).toString().padStart(2, '0')}`;
+    }
+
+    function arrayBufferToBase64(buffer) {
+      return btoa(new Uint8Array(buffer).reduce(
+        (data, byte) => data + String.fromCharCode(byte), ''));
     }
 
     class Particle {
@@ -287,35 +850,79 @@
         this.pos = p5.Vector.random2D().mult(250);
         this.vel = createVector(0, 0);
         this.acc = this.pos.copy().mult(random(0.0001, 0.00001));
-        this.w = random(2, 4);
+        this.w = random(3, 5);
+        if(isMobile) {
+          this.w = random(2, 3); // Smaller particles
+        }
         this.color = [random(200,255), random(200,255), random(200,255)];
       }
-      
-      update(cond) {
+
+      update(energy) {
         this.vel.add(this.acc);
         this.pos.add(this.vel);
-        if (cond) this.vel.mult(1.03);
+        if (energy) this.vel.add(this.acc.mult(1.03));
+        this.life -= 2;
       }
-      
-      edges() {
-        return this.pos.x < -width/2 || this.pos.x > width/2 || 
-               this.pos.y < -height/2 || this.pos.y > height/2;
-      }
-      
-      show() {
+
+      display() {
         noStroke();
-        fill(this.color);
-        ellipse(this.pos.x, this.pos.y, this.w);
+        fill(...this.color, this.life);
+        ellipse(this.pos.x, this.pos.y, 5);
+      }
+
+      isOffscreen() {
+        return this.pos.mag() > width/2 || this.life < 0;
       }
     }
 
-    function lerp(start, end, amt) {
-      return (1 - amt) * start + amt * end;
+    /*class OrbitingLine {
+    constructor() {
+      this.angle = random(360);
+      this.radius = random(50, 150);
+      this.speed = random(-1.5, 1.5);
+      this.history = [];
+      this.maxHistory = 20;
+      this.color = this.getLineColor();
     }
 
-    function selectButton(selector, label) {
-      selectAll(selector).forEach(btn => btn.html(label));
+    getLineColor() {
+      const baseColor = currentGradient[floor(random(currentGradient.length))];
+      return color(
+        min(baseColor[0] * 1.8, 0),
+        min(baseColor[1] * 1.8, 0),
+        min(baseColor[2] * 1.8, 0),
+        150
+      );
     }
+
+    update(energy) {
+      // Update position
+      this.angle += this.speed + map(energy, 0, 255, -0.5, 0.5);
+      this.radius += map(energy, 0, 255, -0.5, 0.5);
+      
+      // Store current position in history
+      this.history.push({
+        x: cos(this.angle) * this.radius,
+        y: sin(this.angle) * this.radius
+      });
+      
+      // Remove oldest position if over limit
+      if (this.history.length > this.maxHistory) {
+        this.history.shift();
+      }
+    }
+
+    display() {
+      noFill();
+      beginShape();
+      for (let i = 0; i < this.history.length; i++) {
+        const alpha = map(i, 0, this.history.length, 50, 255);
+        stroke(red(this.color), green(this.color), blue(this.color), alpha);
+        curveVertex(this.history[i].x, this.history[i].y);
+      }
+      endShape();
+    }
+}*/
   </script>
 </body>
 </html>
