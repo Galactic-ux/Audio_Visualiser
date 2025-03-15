@@ -15,6 +15,7 @@
 
     #upload-container {
       position: fixed;
+      width: 200px;
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
@@ -40,7 +41,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 14px;
+      font-size: 17px;
       padding: 8px 20px;
     }
 
@@ -103,8 +104,9 @@
 
     #playlist-container {
       position: fixed;
-      top: 20px;
-      left: 20px;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 100;
       backdrop-filter: blur(10px);
       background: rgba(255, 255, 255, 0.1);
@@ -181,8 +183,8 @@
     }
 
     .album-art {
-      width: 300px;
-      height: 300px;
+      width: 100px;
+      height: 100px;
       border-radius: 50%;
       object-fit: cover;
       margin-bottom: 15px;
@@ -198,8 +200,8 @@
 
     #visualizer-controls {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    bottom: 80px;
+    right: 100px;
     z-index: 100;
     backdrop-filter: blur(10px);
     background: rgba(255, 255, 255, 0.1);
@@ -232,61 +234,7 @@
     cursor: pointer;
     font-size: 14px;
   }
-
-  /* Add mobile-specific styles */
-    @media (pointer: coarse) {
-      #upload-container {
-        padding: 12px 25px;
-        top: 10px;
-      }
-
-      #controls {
-        width: 90%;
-        bottom: 20px;
-        padding: 20px;
-        height: auto;
-      }
-
-      .control-btn {
-        height: 40px;
-        width: 50px;
-        font-size: 28px;
-      }
-
-      #playlist-container {
-        max-width: 80%;
-        left: 10px;
-        top: 10px;
-      }
-
-      input[type="range"] {
-        width: 150px;
-        height: 8px;
-      }
-
-      .album-art {
-        width: 250px;
-        height: 250px;
-      }
-
-      #visualizer-controls {
-        padding: 15px 25px;
-        right: 10px;
-        top: 10px;
-      }
-    }
   </style>
-  <script>
-    // Detect mobile device
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    // Mobile performance adjustments
-    let MOBILE_ADJUSTMENTS = {
-      fftBins: isMobile ? 256 : 512,
-      particlesMax: isMobile ? 50 : 100,
-      linNum: isMobile ? 40 : 80
-    };
-  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/addons/p5.sound.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -343,7 +291,7 @@
     //Circles Visualizer
     var fftLin;
     var spectrumScale = 1;
-    var linNum = 80;
+    var linNum = 60;
     var r = 0;
     var x = [];
     var y = [];
@@ -429,18 +377,9 @@
     function setup() {
       createCanvas(windowWidth, windowHeight);
       angleMode(DEGREES);
-      //fft = new p5.FFT(0.8, 512);
-       fft = new p5.FFT(0.8, MOBILE_ADJUSTMENTS.fftBins);
+      fft = new p5.FFT(0.8, 512);
       currentGradient = colorPalettes[0];
       targetGradient = colorPalettes[1];
-
-      // Mobile touch event listeners
-      if(isMobile) {
-        document.querySelector('.control-btn').addEventListener('touchend', togglePlay);
-        document.getElementById('file-input').addEventListener('touchstart', function(e) {
-          e.stopPropagation();
-        });
-      }
       
       document.addEventListener('click', (e) => {
       if (!e.target.closest('#playlist-container')) {
@@ -453,21 +392,6 @@
     document.getElementById('file-input').addEventListener('change', function(e) {
       handleFile(e.target.files);
     });
-
-    // Add touch event listener for progress bar
-    const progressBar = document.querySelector('input[type="range"]');
-    if (progressBar) {
-        progressBar.addEventListener('touchstart', function(e) {
-            e.stopPropagation();
-        });
-    }
-
-    // Prevent touch scrolling
-    document.body.addEventListener('touchmove', function(e) {
-      if(e.target.tagName !== 'INPUT') {
-        e.preventDefault();
-      }
-    }, { passive: false });
 
     // Add playlist selection handler
     /*document.getElementById('song-select').addEventListener('change', function(e) {
@@ -520,24 +444,6 @@
     }
 
     async function handleFile(files) {
-
-       // Mobile audio context resume
-      if(isMobile && typeof Tone !== 'undefined' && Tone.context.state !== 'running') {
-        await Tone.context.resume();
-      }
-
-      // Start audio on user interaction for mobile
-      if(isMobile && playlist.length > 0) {
-        const playButton = document.querySelector('.control-btn');
-        playButton.addEventListener('touchend', function firstPlay() {
-          if(song && !song.isPlaying()) {
-            song.play();
-            playButton.textContent = '⏸';
-          }
-          playButton.removeEventListener('touchend', firstPlay);
-        }, {once: true});
-      }
-
       const readerPromises = Array.from(files).map(file => 
         new Promise(resolve => {
           new jsmediatags.Reader(file).read({
@@ -568,11 +474,6 @@
         currentTrackIndex = 0;
         loadTrack(playlist[0]);
       }
-    }
-
-    // Add window resize handler
-    function windowResized() {
-      resizeCanvas(windowWidth, windowHeight);
     }
 
     //Playlist  
@@ -745,7 +646,7 @@
               waveform[max(index - 2, 0)]
             ) / 7;
             
-            let r = map(avg, -1, 1, 200, 350);
+            let r = map(avg, -1, 1, 100, 200);
             let x = r * sin(clampedI) * t;
             let y = r * cos(clampedI);
             curveVertex(x, y);
@@ -770,7 +671,7 @@
         }
         if(i == 0) {
           fill(0);
-          ellipse(x[i], y[i], fftLin[i]*spectrumScale*3, fftLin[i]*spectrumScale*3);
+          ellipse(x[i], y[i], fftLin[i]*spectrumScale*1.5, fftLin[i]*spectrumScale*1.5);
         } else {
           noFill();
           ellipse(x[i], y[i], fftLin[i]*spectrumScale, fftLin[i]*spectrumScale);
@@ -808,7 +709,7 @@
     function updateParticles() {
       particles.push(new Particle());
 
-      let angle = frameCount * 0.5;
+      let angle = frameCount * 0.3;
       rotate(angle);
       
       particles.forEach((p, i) => {
@@ -847,13 +748,10 @@
 
     class Particle {
       constructor() {
-        this.pos = p5.Vector.random2D().mult(250);
+        this.pos = p5.Vector.random2D().mult(50,50);
         this.vel = createVector(0, 0);
         this.acc = this.pos.copy().mult(random(0.0001, 0.00001));
         this.w = random(3, 5);
-        if(isMobile) {
-          this.w = random(2, 3); // Smaller particles
-        }
         this.color = [random(200,255), random(200,255), random(200,255)];
       }
 
@@ -861,7 +759,7 @@
         this.vel.add(this.acc);
         this.pos.add(this.vel);
         if (energy) this.vel.add(this.acc.mult(1.03));
-        this.life -= 2;
+        this.life -= 5;
       }
 
       display() {
@@ -871,7 +769,7 @@
       }
 
       isOffscreen() {
-        return this.pos.mag() > width/2 || this.life < 0;
+        return this.pos.mag() > height/2 || this.life < 0;
       }
     }
 
